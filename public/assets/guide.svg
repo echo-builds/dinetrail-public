@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 690">
+  <rect width="1000" height="690" fill="#f4eee4"/>
+  <rect x="36" y="30" width="928" height="630" rx="28" fill="#fffdf8" stroke="#d9d0c1" stroke-width="3"/>
+  <circle cx="90" cy="91" r="28" fill="#b64b35"/><text x="90" y="100" text-anchor="middle" font-size="28" fill="white" font-family="sans-serif">食</text>
+  <text x="135" y="83" font-size="24" font-weight="700" fill="#1d2b28" font-family="sans-serif">巴黎吃什么研究所</text>
+  <text x="135" y="111" font-size="17" fill="#777" font-family="sans-serif">2小时前 · 巴黎第二区</text>
+  <text x="76" y="170" font-size="32" font-weight="700" fill="#1d2b28" font-family="sans-serif">这家小酒馆，第一次来巴黎可以抄作业</text>
+  <rect x="76" y="205" width="264" height="280" rx="18" fill="#d9b08c"/><path d="M112 410c55-125 142-152 194-25v70H112z" fill="#8f452f"/><circle cx="205" cy="318" r="52" fill="#e9c18e"/>
+  <rect x="366" y="205" width="264" height="280" rx="18" fill="#b8c0a1"/><ellipse cx="498" cy="354" rx="92" ry="68" fill="#f0d3a8"/><path d="M428 358q70-78 140 0" fill="none" stroke="#8a513d" stroke-width="24"/>
+  <rect x="656" y="205" width="264" height="280" rx="18" fill="#c9a799"/><rect x="721" y="278" width="132" height="136" rx="18" fill="#f0c66a"/><path d="M721 316h132" stroke="#9c5d31" stroke-width="12"/>
+  <text x="76" y="535" font-size="23" font-weight="700" fill="#1d2b28" font-family="sans-serif">必点：蛋黄酱鸡蛋、油封鸭腿</text>
+  <text x="76" y="574" font-size="20" fill="#555" font-family="sans-serif">鸭腿外皮脆、肉很香，不过整体偏咸；焦糖布蕾也可以。</text>
+  <text x="76" y="618" font-size="18" fill="#b64b35" font-family="sans-serif">#巴黎美食  #法国旅行  #巴黎餐厅</text>
+</svg>

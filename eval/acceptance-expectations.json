@@ -1,0 +1,18 @@
+{
+  "menu-avocette.jpg": {
+    "minDishes": 10,
+    "pricingMode": "fixed_menu"
+  },
+  "menu-petit-cafe.jpg": {
+    "minDishes": 15,
+    "pricingMode": "a_la_carte"
+  },
+  "menu-pont.jpg": {
+    "minDishes": 10,
+    "pricingMode": "a_la_carte"
+  },
+  "menu-le-royal-1.jpg": {
+    "minDishes": 12,
+    "pricingMode": "multiple_fixed_menus"
+  }
+}

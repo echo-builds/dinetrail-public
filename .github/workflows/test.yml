@@ -1,0 +1,20 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile
+        run: python -m py_compile server.py scripts/evaluate_real_menus.py scripts/smoke_public.py
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Build production image
+        run: docker build -t bonjour-menu:test .
