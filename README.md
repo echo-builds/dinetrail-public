@@ -12,9 +12,9 @@ DineTrail 会持续记住不同菜单页已经选了什么，把小红书里的�
 
 点击封面观看约 1 分钟的完整点餐流程：菜单逐道出现、勾选与追问、小红书推荐、追加菜单，以及给服务员看的点菜单。
 
-<a href="docs/dinetrail-demo.mp4"><img src="docs/dinetrail-demo-cover.jpg" alt="DineTrail 点餐演示视频封面" width="260"></a>
+<a href="docs/dinetrail-demo.mp4?raw=1"><img src="docs/dinetrail-demo-cover.jpg" alt="DineTrail 点餐演示视频封面" width="260"></a>
 
-[播放演示视频（MP4，约 66 秒）](docs/dinetrail-demo.mp4)
+[播放演示视频（MP4，约 66 秒）](docs/dinetrail-demo.mp4?raw=1)
 
 视频剪去了 macOS 系统选图窗口，并压缩了识别等待和重复滚动；实际识别耗时取决于菜单内容和网络情况。
 
