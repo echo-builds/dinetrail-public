@@ -1,0 +1,8 @@
+.DS_Store
+.env
+.data/
+.tools/
+eval/downloads/
+eval/results/
+node_modules/
+*.log

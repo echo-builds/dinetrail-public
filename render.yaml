@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+
+services:
+  - type: web
+    name: bonjour-menu
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    autoDeployTrigger: commit
+    healthCheckPath: /healthz
+    envVars:
+      - key: MODEL_PROVIDER
+        value: qwen
+      - key: DASHSCOPE_API_KEY
+        sync: false
+      - key: QWEN_MODEL
+        value: qwen3.8-flash
+      - key: HOST
+        value: 0.0.0.0
+      - key: SESSION_DATA_DIR
+        value: /data
+      - key: SESSION_TTL_SECONDS
+        value: "172800"
+      - key: MODEL_REQUESTS_PER_WINDOW
+        value: "60"
+      - key: MODEL_REQUESTS_GLOBAL_PER_WINDOW
+        value: "300"
+      - key: SESSION_WRITES_PER_WINDOW
+        value: "600"
+      - key: SESSION_MAX_ACTIVE
+        value: "500"
+      - key: SESSION_MAX_STORED_IMAGE_BYTES
+        value: "536870912"
+    disk:
+      name: dining-sessions
+      mountPath: /data
+      sizeGB: 1
