@@ -36,10 +36,13 @@ cd dinetrail-public
 cp .env.example .env
 ```
 
-在 `.env` 中填写阿里云百炼密钥：
+在 `.env` 中配置一个支持图片理解和结构化输出的模型服务：
 
 ```text
-DASHSCOPE_API_KEY=your_key
+MODEL_API_TYPE=openai_compatible
+MODEL_BASE_URL=https://YOUR_PROVIDER.example/v1
+MODEL_API_KEY=your_key
+MODEL_NAME=your_vision_model
 ```
 
 启动服务：
@@ -48,10 +51,11 @@ DASHSCOPE_API_KEY=your_key
 python3 server.py
 ```
 
-打开 `http://localhost:4173`。未配置模型密钥时仍可打开界面，但不能识别真实菜单或进行真实对话。
+打开 `http://localhost:4173`。可使用 OpenAI-compatible 多模态接口或 Gemini；不同模型的结构化输出和流式能力可能不同，详见[模型配置](docs/MODELS.md)。未配置模型时仍可打开界面，但不能识别真实菜单或进行真实对话。
 
 ## 开发者文档
 
+- [模型配置](docs/MODELS.md)
 - [部署指南](docs/DEPLOYMENT.md)
 - [真实菜单评测](docs/EVALUATION.md)
 

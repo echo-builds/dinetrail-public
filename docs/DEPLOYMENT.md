@@ -10,7 +10,7 @@
 - `/healthz` 健康检查
 - 挂载到 `/data` 的 1 GB 持久化磁盘
 
-在 Render 后台配置不会写入仓库的 `DASHSCOPE_API_KEY`。
+创建服务时，在 Render 后台填写 `MODEL_BASE_URL`、`MODEL_API_KEY` 和 `MODEL_NAME`。这些配置不会写入仓库。所选模型需要支持图片理解和结构化输出，具体选项见[模型配置](MODELS.md)。
 
 Render 的免费 Web Service 不支持持久化磁盘，且空闲后会休眠，只适合临时验证。需要保存点餐会话和原图时，应使用支持持久化磁盘的实例。平台限制见 [Render Free 文档](https://render.com/docs/free) 与 [Persistent Disks 文档](https://render.com/docs/disks)。
 
@@ -19,11 +19,16 @@ Render 的免费 Web Service 不支持持久化磁盘，且空闲后会休眠，
 至少配置以下环境变量：
 
 ```text
-DASHSCOPE_API_KEY=...
+MODEL_API_TYPE=openai_compatible
+MODEL_BASE_URL=https://YOUR_PROVIDER.example/v1
+MODEL_API_KEY=...
+MODEL_NAME=YOUR_VISION_MODEL
 HOST=0.0.0.0
 PORT=4173
 SESSION_DATA_DIR=/data
 ```
+
+也可以改用 Gemini 原生接口。模型与可选 OCR 的完整配置见[模型配置](MODELS.md)。
 
 将 `/data` 挂载到持久化磁盘，否则服务重启后点餐会话和原图会丢失。
 

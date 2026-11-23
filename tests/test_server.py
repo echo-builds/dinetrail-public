@@ -7,8 +7,12 @@ import unittest
 import base64
 from unittest.mock import patch
 
-os.environ["MODEL_PROVIDER"] = "qwen"
-os.environ["DASHSCOPE_API_KEY"] = "test-key"
+os.environ["MODEL_API_TYPE"] = "openai_compatible"
+os.environ["MODEL_API_KEY"] = "test-key"
+os.environ["MODEL_BASE_URL"] = "https://models.example/v1"
+os.environ["MODEL_NAME"] = "test-vision-model"
+os.environ["MODEL_COMPAT_MODE"] = "standard"
+os.environ["OCR_PROVIDER"] = "none"
 
 import server
 
@@ -33,7 +37,7 @@ class FakeResponse:
         return json.dumps(result).encode("utf-8")
 
 
-class QwenRequestTest(unittest.TestCase):
+class ModelRequestTest(unittest.TestCase):
     def test_parses_ecb_eur_cny_reference_rate(self):
         payload = b'''<gesmes:Envelope xmlns:gesmes="http://www.gesmes.org/xml/2002-08-01"
           xmlns="http://www.ecb.int/vocabulary/2002-08-01/eurofxref">
@@ -199,8 +203,8 @@ class QwenRequestTest(unittest.TestCase):
         self.assertEqual(fetch.call_args.args[0], "https://xhslink.cn/o/ImNzNURQNH")
         self.assertTrue(server.is_xhs_page_url("https://xhslink.cn/o/ImNzNURQNH"))
 
-    def test_qwen_request_accepts_multiple_images(self):
-        request = server.qwen_request(
+    def test_openai_compatible_request_accepts_multiple_images(self):
+        request = server.openai_compatible_request(
             "test",
             server.GUIDE_SCHEMA,
             "guide_candidates",
@@ -209,8 +213,19 @@ class QwenRequestTest(unittest.TestCase):
         )
         body = json.loads(request.data)
 
+        self.assertEqual(request.full_url, "https://models.example/v1/chat/completions")
         self.assertEqual(len(body["messages"][0]["content"]), 3)
         self.assertEqual(body["messages"][0]["content"][2]["image_url"]["url"], "data:image/png;base64,Yg==")
+        self.assertNotIn("enable_thinking", body)
+
+    def test_openai_endpoint_accepts_base_or_full_chat_url(self):
+        self.assertEqual(server.openai_chat_endpoint("https://models.example/v1"),
+                         "https://models.example/v1/chat/completions")
+        self.assertEqual(server.openai_chat_endpoint("https://models.example/v1/chat/completions"),
+                         "https://models.example/v1/chat/completions")
+
+    def test_model_json_parser_accepts_fenced_json(self):
+        self.assertEqual(server.parse_model_json('```json\n{"ok": true}\n```'), {"ok": True})
 
     def test_guide_schema_requires_verbatim_source_quote(self):
         item_schema = server.GUIDE_SCHEMA["properties"]["items"]["items"]
@@ -275,8 +290,7 @@ class QwenRequestTest(unittest.TestCase):
             return result
 
         events = []
-        with patch.object(server, "stream_qwen_region", side_effect=fake_stream), \
-                patch.object(server, "qwen_ocr_lines", return_value=[]):
+        with patch.object(server, "stream_openai_compatible_region", side_effect=fake_stream):
             server.stream_visual_menu("prompt", "image", regions, events.append, [
                 {"id": "guide-soup", "nameOriginal": "French Onion Soup", "nameZh": "法式洋葱汤"},
             ])
@@ -539,9 +553,9 @@ class QwenRequestTest(unittest.TestCase):
     def test_structured_image_request_and_response(self):
         def fake_urlopen(request, timeout):
             body = json.loads(request.data)
-            self.assertEqual(request.full_url, "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
+            self.assertEqual(request.full_url, "https://models.example/v1/chat/completions")
             self.assertEqual(request.headers["Authorization"], "Bearer test-key")
-            self.assertEqual(body["model"], "qwen3.8-flash")
+            self.assertEqual(body["model"], "test-vision-model")
             self.assertEqual(body["response_format"]["type"], "json_schema")
             self.assertEqual(body["response_format"]["json_schema"]["schema"], server.CHAT_SCHEMA)
             self.assertEqual(body["max_tokens"], 8192)

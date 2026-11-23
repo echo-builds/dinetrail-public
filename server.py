@@ -47,30 +47,85 @@ def load_local_env():
 load_local_env()
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", "4173"))
+
+
+def env_flag(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def openai_chat_endpoint(base_url):
+    base_url = str(base_url or "").strip().rstrip("/")
+    if not base_url:
+        return ""
+    if base_url.endswith("/chat/completions"):
+        return base_url
+    return f"{base_url}/chat/completions"
+
+
 DASHSCOPE_API_KEY = os.environ.get("DASHSCOPE_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-PROVIDER = os.environ.get("MODEL_PROVIDER") or ("qwen" if DASHSCOPE_API_KEY else "gemini")
-if PROVIDER == "qwen":
-    API_KEY = DASHSCOPE_API_KEY
-    MODEL = os.environ.get("QWEN_MODEL", "qwen3.8-flash")
-    MODEL_ENDPOINT = os.environ.get(
-        "QWEN_BASE_URL",
-        "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-    )
+LEGACY_PROVIDER = os.environ.get("MODEL_PROVIDER", "").strip().lower()
+PROVIDER = os.environ.get("MODEL_API_TYPE", "").strip().lower()
+if not PROVIDER:
+    PROVIDER = "gemini" if LEGACY_PROVIDER == "gemini" else "openai_compatible"
+if PROVIDER in {"openai", "openai-compatible", "openai_compat"}:
+    PROVIDER = "openai_compatible"
+if PROVIDER not in {"openai_compatible", "gemini"}:
+    raise RuntimeError("MODEL_API_TYPE 只支持 openai_compatible 或 gemini")
+
+if PROVIDER == "openai_compatible":
+    API_KEY = os.environ.get("MODEL_API_KEY") or DASHSCOPE_API_KEY
+    MODEL = os.environ.get("MODEL_NAME") or os.environ.get("QWEN_MODEL", "")
+    if not MODEL and DASHSCOPE_API_KEY:
+        MODEL = "qwen3.8-flash"
+    model_base_url = os.environ.get("MODEL_BASE_URL") or os.environ.get("QWEN_BASE_URL", "")
+    if not model_base_url and DASHSCOPE_API_KEY:
+        model_base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    MODEL_ENDPOINT = openai_chat_endpoint(model_base_url)
 else:
-    API_KEY = GEMINI_API_KEY
-    MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-    MODEL_ENDPOINT = None
+    API_KEY = os.environ.get("MODEL_API_KEY") or GEMINI_API_KEY
+    MODEL = os.environ.get("MODEL_NAME") or os.environ.get("GEMINI_MODEL", "")
+    if not MODEL and GEMINI_API_KEY:
+        MODEL = "gemini-3.6-flash"
+    MODEL_ENDPOINT = (
+        os.environ.get("MODEL_BASE_URL")
+        or os.environ.get("GEMINI_BASE_URL")
+        or "https://generativelanguage.googleapis.com/v1beta"
+    ).rstrip("/")
+
+MODEL_RESPONSE_FORMAT = os.environ.get("MODEL_RESPONSE_FORMAT", "json_schema").strip().lower()
+if MODEL_RESPONSE_FORMAT not in {"json_schema", "json_object", "prompt_only"}:
+    raise RuntimeError("MODEL_RESPONSE_FORMAT 只支持 json_schema、json_object 或 prompt_only")
+MODEL_MAX_TOKENS_FIELD = os.environ.get("MODEL_MAX_TOKENS_FIELD", "max_tokens").strip()
+if MODEL_MAX_TOKENS_FIELD not in {"max_tokens", "max_completion_tokens"}:
+    raise RuntimeError("MODEL_MAX_TOKENS_FIELD 配置无效")
+MODEL_STREAM_ENABLED = PROVIDER == "openai_compatible" and env_flag("MODEL_STREAM", True)
+MODEL_COMPAT_MODE = os.environ.get("MODEL_COMPAT_MODE", "").strip().lower()
+if not MODEL_COMPAT_MODE and (
+    LEGACY_PROVIDER == "qwen" or "dashscope.aliyuncs.com" in MODEL_ENDPOINT
+):
+    MODEL_COMPAT_MODE = "qwen"
+
+if not API_KEY or not MODEL or not MODEL_ENDPOINT:
+    API_KEY = None
 
 RETRY_DELAYS = (2, 5, 10)
 MODEL_READ_TIMEOUT_SECONDS = int(os.environ.get("MODEL_READ_TIMEOUT_SECONDS", "240"))
 OCR_READ_TIMEOUT_SECONDS = int(os.environ.get("OCR_READ_TIMEOUT_SECONDS", "120"))
 MENU_SECTION_CONCURRENCY = int(os.environ.get("MENU_SECTION_CONCURRENCY", "4"))
-OCR_MODEL = os.environ.get("QWEN_OCR_MODEL", "qwen-vl-ocr")
-OCR_ENDPOINT = os.environ.get(
+OCR_PROVIDER = os.environ.get("OCR_PROVIDER", "").strip().lower()
+if not OCR_PROVIDER:
+    OCR_PROVIDER = "qwen" if DASHSCOPE_API_KEY else "none"
+OCR_API_KEY = os.environ.get("OCR_API_KEY") or (DASHSCOPE_API_KEY if OCR_PROVIDER == "qwen" else None)
+OCR_MODEL = os.environ.get("OCR_MODEL") or os.environ.get("QWEN_OCR_MODEL", "qwen-vl-ocr")
+OCR_ENDPOINT = os.environ.get("OCR_BASE_URL") or os.environ.get(
     "QWEN_OCR_ENDPOINT",
     "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
 )
+OCR_ENABLED = OCR_PROVIDER == "qwen" and bool(OCR_API_KEY and OCR_MODEL and OCR_ENDPOINT)
 
 XHS_PAGE_HOSTS = {
     "xiaohongshu.com", "www.xiaohongshu.com",
@@ -318,7 +373,7 @@ def image_inputs(image):
     return [image] if isinstance(image, str) else list(image)
 
 
-def qwen_request(prompt, schema, name, image, max_output_tokens, stream=False):
+def openai_compatible_request(prompt, schema, name, image, max_output_tokens, stream=False):
     content = [{"type": "text", "text": prompt}]
     for item in image_inputs(image):
         if not item.startswith("data:image/") or ";base64," not in item:
@@ -327,13 +382,17 @@ def qwen_request(prompt, schema, name, image, max_output_tokens, stream=False):
     payload = {
         "model": MODEL,
         "messages": [{"role": "user", "content": content}],
-        "response_format": {
+        MODEL_MAX_TOKENS_FIELD: max_output_tokens,
+    }
+    if MODEL_RESPONSE_FORMAT == "json_schema":
+        payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {"name": name, "strict": True, "schema": schema},
-        },
-        "max_tokens": max_output_tokens,
-        "enable_thinking": False,
-    }
+        }
+    elif MODEL_RESPONSE_FORMAT == "json_object":
+        payload["response_format"] = {"type": "json_object"}
+    if MODEL_COMPAT_MODE == "qwen":
+        payload["enable_thinking"] = False
     if stream:
         payload["stream"] = True
     return urllib.request.Request(
@@ -342,6 +401,11 @@ def qwen_request(prompt, schema, name, image, max_output_tokens, stream=False):
         headers={"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"},
         method="POST",
     )
+
+
+def qwen_request(prompt, schema, name, image, max_output_tokens, stream=False):
+    """Backward-compatible alias for older integrations."""
+    return openai_compatible_request(prompt, schema, name, image, max_output_tokens, stream)
 
 
 def gemini_request(prompt, schema, image, max_output_tokens):
@@ -364,7 +428,7 @@ def gemini_request(prompt, schema, image, max_output_tokens):
     }
     model_path = urllib.parse.quote(MODEL, safe="-._")
     return urllib.request.Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model_path}:generateContent",
+        f"{MODEL_ENDPOINT}/models/{model_path}:generateContent",
         data=json.dumps(payload).encode("utf-8"),
         headers={"x-goog-api-key": API_KEY, "Content-Type": "application/json"},
         method="POST",
@@ -571,10 +635,42 @@ def result_shape(value):
     return type(value).__name__
 
 
+def parse_model_json(value):
+    if isinstance(value, (dict, list)):
+        return value
+    text = str(value or "").strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if fenced:
+        text = fenced.group(1).strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        start_positions = [position for position in (text.find("{"), text.find("[")) if position >= 0]
+        if not start_positions:
+            raise
+        parsed, _ = json.JSONDecoder().raw_decode(text[min(start_positions):])
+        return parsed
+
+
+def openai_message_content(result):
+    choices = result.get("choices", [])
+    content = choices[0].get("message", {}).get("content") if choices else None
+    if isinstance(content, list):
+        return "".join(
+            part.get("text", "") for part in content
+            if isinstance(part, dict) and part.get("type") in {None, "text", "output_text"}
+        )
+    return content
+
+
 def model_request(prompt, schema, name, image=None, max_output_tokens=8192):
     if not API_KEY:
         raise RuntimeError("尚未配置模型 API Key")
-    request = qwen_request(prompt, schema, name, image, max_output_tokens) if PROVIDER == "qwen" else gemini_request(prompt, schema, image, max_output_tokens)
+    request = (
+        openai_compatible_request(prompt, schema, name, image, max_output_tokens)
+        if PROVIDER == "openai_compatible"
+        else gemini_request(prompt, schema, image, max_output_tokens)
+    )
     result = None
     for attempt in range(len(RETRY_DELAYS) + 1):
         try:
@@ -589,9 +685,8 @@ def model_request(prompt, schema, name, image=None, max_output_tokens=8192):
             if error.code in {429, 500, 502, 503, 504}:
                 raise RuntimeError("模型服务暂时繁忙，请稍后重试") from error
             raise RuntimeError(f"模型接口失败 ({error.code}): {detail}") from error
-    if PROVIDER == "qwen":
-        choices = result.get("choices", [])
-        output_text = choices[0].get("message", {}).get("content") if choices else None
+    if PROVIDER == "openai_compatible":
+        output_text = openai_message_content(result)
     else:
         output_text = None
         for candidate in result.get("candidates", []):
@@ -604,7 +699,7 @@ def model_request(prompt, schema, name, image=None, max_output_tokens=8192):
         detail = f"（{block_reason}）" if block_reason else ""
         raise RuntimeError(f"模型没有返回结构化结果{detail}")
     try:
-        parsed = json.loads(output_text)
+        parsed = parse_model_json(output_text)
     except json.JSONDecodeError as error:
         raise RuntimeError("模型返回了无效 JSON") from error
     parsed = normalize_result(parsed, schema, name)
@@ -1330,7 +1425,7 @@ def qwen_ocr_lines(image):
     request = urllib.request.Request(
         OCR_ENDPOINT,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Authorization": f"Bearer {DASHSCOPE_API_KEY}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {OCR_API_KEY}", "Content-Type": "application/json"},
         method="POST",
     )
     for attempt in range(len(RETRY_DELAYS) + 1):
@@ -1796,9 +1891,9 @@ class StreamedDishParser:
         return completed
 
 
-def stream_qwen_region(prompt, region, on_dish):
-    request = qwen_request(visual_region_prompt(prompt, region), STREAM_MENU_SCHEMA,
-                           "menu_page_stream", region["image"], 12288, stream=True)
+def stream_openai_compatible_region(prompt, region, on_dish):
+    request = openai_compatible_request(visual_region_prompt(prompt, region), STREAM_MENU_SCHEMA,
+                                        "menu_page_stream", region["image"], 12288, stream=True)
     parser = StreamedDishParser()
     emitted = 0
     with urllib.request.urlopen(request, timeout=MODEL_READ_TIMEOUT_SECONDS) as response:
@@ -1828,13 +1923,18 @@ def stream_qwen_region(prompt, region, on_dish):
     return result
 
 
+def stream_qwen_region(prompt, region, on_dish):
+    """Backward-compatible alias for older integrations."""
+    return stream_openai_compatible_region(prompt, region, on_dish)
+
+
 def stream_visual_menu(prompt, image, regions, emit, guide_items=None):
     clean_regions = visual_menu_regions(image, regions)
     guide_items = [item for item in (guide_items or []) if isinstance(item, dict) and item.get("id")]
     emit({"type": "start", "regions": len(clean_regions)})
 
     def read_ocr():
-        if PROVIDER != "qwen" or not DASHSCOPE_API_KEY:
+        if not OCR_ENABLED:
             return None
         try:
             return qwen_ocr_lines(image)
@@ -1865,9 +1965,9 @@ def stream_visual_menu(prompt, image, regions, emit, guide_items=None):
                     emitted += 1
 
             try:
-                if PROVIDER == "qwen":
+                if PROVIDER == "openai_compatible" and MODEL_STREAM_ENABLED:
                     try:
-                        result = stream_qwen_region(streaming_menu_prompt(), region, on_dish)
+                        result = stream_openai_compatible_region(streaming_menu_prompt(), region, on_dish)
                     except Exception as error:
                         if emitted:
                             raise
@@ -2087,7 +2187,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(status, payload)
             return
         if request_path == "/api/status":
-            self.send_json(200, {"liveModel": bool(API_KEY), "provider": PROVIDER if API_KEY else None, "model": MODEL if API_KEY else None})
+            self.send_json(200, {
+                "liveModel": bool(API_KEY),
+                "provider": PROVIDER if API_KEY else None,
+                "model": MODEL if API_KEY else None,
+                "streamingEnabled": bool(API_KEY and MODEL_STREAM_ENABLED),
+                "ocrEnabled": OCR_ENABLED,
+            })
             return
         parts = self.api_path_parts()
         if len(parts) == 3 and parts[:2] == ["api", "sessions"]:
@@ -2207,7 +2313,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return
                 prompt = menu_analysis_prompt(body.get("guideItems", []))
                 image = body.get("image")
-                if PROVIDER == "qwen" and DASHSCOPE_API_KEY:
+                if OCR_ENABLED:
                     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                         vision_future = executor.submit(analyze_visual_menu, prompt, image, body.get("regions"))
                         ocr_future = executor.submit(qwen_ocr_lines, image)
@@ -2251,7 +2357,7 @@ class Handler(SimpleHTTPRequestHandler):
                         pass
                 return
             if self.path == "/api/locate-menu":
-                if PROVIDER != "qwen" or not DASHSCOPE_API_KEY:
+                if not OCR_ENABLED:
                     self.send_json(503, {"error": "当前模型配置不支持 OCR 坐标校准"})
                     return
                 image = body.get("image")

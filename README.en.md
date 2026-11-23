@@ -36,10 +36,13 @@ cd dinetrail-public
 cp .env.example .env
 ```
 
-Add your Alibaba Cloud Model Studio API key to `.env`:
+Configure a vision-capable model service with structured-output support in `.env`:
 
 ```text
-DASHSCOPE_API_KEY=your_key
+MODEL_API_TYPE=openai_compatible
+MODEL_BASE_URL=https://YOUR_PROVIDER.example/v1
+MODEL_API_KEY=your_key
+MODEL_NAME=your_vision_model
 ```
 
 Start the server:
@@ -48,10 +51,11 @@ Start the server:
 python3 server.py
 ```
 
-Open `http://localhost:4173`. The interface will load without an API key, but real menu recognition and chat will be unavailable.
+Open `http://localhost:4173`. DineTrail can use a multimodal OpenAI-compatible endpoint or Gemini. Structured output and streaming behavior vary by model; see [Model Configuration](docs/MODELS.en.md). The interface will load without a configured model, but real menu recognition and chat will be unavailable.
 
 ## Developer Documentation
 
+- [Model Configuration](docs/MODELS.en.md)
 - [Deployment Guide](docs/DEPLOYMENT.en.md)
 - [Real-Menu Evaluation](docs/EVALUATION.en.md)
 

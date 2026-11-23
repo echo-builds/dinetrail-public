@@ -18,6 +18,7 @@ const initialState = {
     text: "把攻略或现场菜单发给我。我们可以边看、边问、边选，之前选过的菜会一直保留。",
   }],
   liveModel: false,
+  ocrEnabled: false,
   busy: null,
   chatBusy: false,
   draftDishId: null,
@@ -138,6 +139,7 @@ async function initializeDiningSession() {
         busy: null,
         chatBusy: false,
         liveModel: state.liveModel,
+        ocrEnabled: state.ocrEnabled,
       };
       sessionId = result.sessionId;
       sessionReady = true;
@@ -147,7 +149,7 @@ async function initializeDiningSession() {
     } catch (error) {
       console.warn("点餐会话恢复失败，将创建新会话", error);
       if (explicitSession) {
-        state = { ...initialState, selections: {}, pages: [], messages: [...initialState.messages], liveModel: state.liveModel };
+        state = { ...initialState, selections: {}, pages: [], messages: [...initialState.messages], liveModel: state.liveModel, ocrEnabled: state.ocrEnabled };
       }
       localStorage.removeItem(SESSION_POINTER_KEY);
     }
@@ -970,7 +972,7 @@ function orderSourcePage(page, index) {
 
 function orderSheet() {
   const selected = selectedDishes();
-  const needsCalibration = selected.some((dish) => dish.boxSource !== "ocr");
+  const needsCalibration = state.ocrEnabled && selected.some((dish) => dish.boxSource !== "ocr");
   modal(`<header class="sheet-head order-sheet-head"><h2>Commande</h2><button class="sheet-close" data-action="close-modal" aria-label="关闭"><i class="ph ph-x"></i></button></header><div class="sheet-body order-sheet-body">
     ${selected.length ? `<div class="order-text-list">${selected.map((dish) => `<div class="order-text-row"><b>${state.selections[dish.id]}×</b><span class="order-dish-copy"><strong>${esc(originalDishName(dish))}</strong></span><strong class="order-row-price">${Number(dish.price) > 0 ? money(dish.price * state.selections[dish.id]) : dish.pagePricing?.mode === "fixed_menu" ? "Inclus" : "—"}</strong></div>`).join("")}</div><div class="order-total"><span>Total</span><div class="order-total-values"><strong>${orderTotalIsKnown() ? money(total()) : "À confirmer"}</strong><small id="order-cny-total">${orderCnyPriceLabel()}</small></div></div>` : `<div class="empty-order"><strong>还没有选择项目</strong><p>回到对话里勾选后，会在这里生成文本点菜单。</p></div>`}
     ${state.pages.length ? `<section class="order-sources"><div class="order-sources-head"><h3>查看原图</h3>${needsCalibration ? `<button class="calibrate-positions" data-action="calibrate">校准勾选位置</button>` : `<span>左右滑动查看 ${state.pages.length} 页</span>`}</div><div class="order-source-carousel" tabindex="0" aria-label="已选项目在 ${state.pages.length} 页菜单原图中的位置">${state.pages.map(orderSourcePage).join("")}</div></section>` : ""}
@@ -978,6 +980,7 @@ function orderSheet() {
 }
 
 async function calibratePositions() {
+  if (!state.ocrEnabled) return toast("当前部署未配置 OCR 坐标校准");
   const operation = operationVersion;
   const pages = state.pages.filter((page) => page.dishes.some((dish) => state.selections[dish.id] && dish.boxSource !== "ocr"));
   if (!pages.length) return;
@@ -1015,7 +1018,7 @@ async function reset() {
   localStorage.removeItem(SESSION_POINTER_KEY);
   const clearImagesTask = clearImages().catch(() => {});
   imageCache.clear();
-  state = { ...initialState, selections: {}, pages: [], messages: [...initialState.messages], liveModel: state.liveModel };
+  state = { ...initialState, selections: {}, pages: [], messages: [...initialState.messages], liveModel: state.liveModel, ocrEnabled: state.ocrEnabled };
   sessionId = null;
   sessionReady = false;
   homeRequested = false;
@@ -1468,6 +1471,17 @@ document.addEventListener("input", (event) => {
   if (event.target.id === "composer-input") composerDraft = event.target.value;
 });
 
+document.addEventListener("paste", (event) => {
+  const images = [...(event.clipboardData?.items || [])]
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean);
+  if (!images.length) return;
+  event.preventDefault();
+  if (isPristineDiningSession()) stageEntryMenus(images);
+  else analyzeMenus(images);
+});
+
 document.addEventListener("submit", (event) => {
   if (event.target.id === "guide-import-form") {
     event.preventDefault();
@@ -1525,8 +1539,10 @@ async function initializeApp() {
     const response = await fetch("/api/status");
     const data = await response.json();
     state.liveModel = Boolean(data.liveModel);
+    state.ocrEnabled = Boolean(data.ocrEnabled);
   } catch {
     state.liveModel = false;
+    state.ocrEnabled = false;
   }
   render(false);
 }

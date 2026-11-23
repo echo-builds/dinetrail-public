@@ -9,12 +9,20 @@ services:
     autoDeployTrigger: commit
     healthCheckPath: /healthz
     envVars:
-      - key: MODEL_PROVIDER
-        value: qwen
-      - key: DASHSCOPE_API_KEY
+      - key: MODEL_API_TYPE
+        value: openai_compatible
+      - key: MODEL_BASE_URL
         sync: false
-      - key: QWEN_MODEL
-        value: qwen3.8-flash
+      - key: MODEL_API_KEY
+        sync: false
+      - key: MODEL_NAME
+        sync: false
+      - key: MODEL_RESPONSE_FORMAT
+        value: json_schema
+      - key: MODEL_STREAM
+        value: "true"
+      - key: OCR_PROVIDER
+        value: none
       - key: HOST
         value: 0.0.0.0
       - key: SESSION_DATA_DIR

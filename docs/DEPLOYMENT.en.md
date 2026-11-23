@@ -10,7 +10,7 @@ Create a service from the repository using Render Blueprint. The default `render
 - A `/healthz` health check
 - A 1 GB persistent disk mounted at `/data`
 
-Set `DASHSCOPE_API_KEY` in the Render dashboard so the key is never committed to the repository.
+When creating the service, provide `MODEL_BASE_URL`, `MODEL_API_KEY`, and `MODEL_NAME` in the Render dashboard. These values are not committed to the repository. The selected model must accept images and produce structured output; see [Model Configuration](MODELS.en.md).
 
 Render's free web services do not support persistent disks and go to sleep when idle, so they are suitable only for temporary testing. To preserve dining sessions and uploaded menu images, use an instance with persistent storage. See Render's documentation for [free services](https://render.com/docs/free) and [persistent disks](https://render.com/docs/disks).
 
@@ -19,11 +19,16 @@ Render's free web services do not support persistent disks and go to sleep when 
 Set at least the following environment variables:
 
 ```text
-DASHSCOPE_API_KEY=...
+MODEL_API_TYPE=openai_compatible
+MODEL_BASE_URL=https://YOUR_PROVIDER.example/v1
+MODEL_API_KEY=...
+MODEL_NAME=YOUR_VISION_MODEL
 HOST=0.0.0.0
 PORT=4173
 SESSION_DATA_DIR=/data
 ```
+
+You may use the native Gemini adapter instead. See [Model Configuration](MODELS.en.md) for provider options and optional OCR setup.
 
 Mount persistent storage at `/data`. Otherwise, dining sessions and uploaded menu images will be lost whenever the service restarts.
 
