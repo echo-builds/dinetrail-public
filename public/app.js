@@ -148,7 +148,10 @@ async function initializeDiningSession() {
       return;
     } catch (error) {
       console.warn("点餐会话恢复失败，将创建新会话", error);
-      if (explicitSession) {
+      // Free hosting can restart and lose its temporary SQLite file. When this
+      // browser owns the failed session, keep its local meal and reconnect it
+      // to a new server session instead of erasing the user's selections.
+      if (explicitSession && explicitSession !== storedSession) {
         state = { ...initialState, selections: {}, pages: [], messages: [...initialState.messages], liveModel: state.liveModel, ocrEnabled: state.ocrEnabled };
       }
       localStorage.removeItem(SESSION_POINTER_KEY);

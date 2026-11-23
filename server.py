@@ -1218,6 +1218,23 @@ def consume_rate_limits(limits, now=None):
     return True, 0
 
 
+def model_rate_limits(client, dining_session=None):
+    """Protect both the free shared quota and each visitor's daily allowance."""
+    limits = [
+        ("model-global", "all", MODEL_REQUESTS_GLOBAL_PER_WINDOW),
+        ("model-client", client, MODEL_REQUESTS_PER_WINDOW),
+    ]
+    if dining_session:
+        limits.append(("model-session", dining_session, MODEL_REQUESTS_PER_SESSION_WINDOW))
+    return limits
+
+
+def rate_limit_message(kind):
+    if kind == "model" and RATE_LIMIT_WINDOW_SECONDS >= 23 * 60 * 60:
+        return "今日体验次数已用完，请明天再试"
+    return "请求过于频繁，请稍后再试"
+
+
 def create_dining_session(state):
     now = time.time()
     session_id = uuid.uuid4().hex
@@ -2138,16 +2155,7 @@ class Handler(SimpleHTTPRequestHandler):
         client = self.client_identity()
         if kind == "model":
             dining_session = active_session_id(self.headers.get("X-Dining-Session", ""))
-            identity_limit = (
-                "model-session",
-                dining_session,
-                MODEL_REQUESTS_PER_SESSION_WINDOW,
-            ) if dining_session else (
-                "model-client",
-                client,
-                MODEL_REQUESTS_PER_WINDOW,
-            )
-            limits = [("model-global", "all", MODEL_REQUESTS_GLOBAL_PER_WINDOW), identity_limit]
+            limits = model_rate_limits(client, dining_session)
         else:
             limits = [("session-write", client, SESSION_WRITES_PER_WINDOW)]
         allowed, retry_after = consume_rate_limits(limits)
@@ -2155,7 +2163,7 @@ class Handler(SimpleHTTPRequestHandler):
             return True
         self.send_json(
             429,
-            {"error": "请求过于频繁，请稍后再试"},
+            {"error": rate_limit_message(kind)},
             {"Retry-After": retry_after},
         )
         return False

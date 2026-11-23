@@ -72,6 +72,20 @@ class ModelRequestTest(unittest.TestCase):
         with patch.object(server, "RATE_LIMIT_WINDOW_SECONDS", 10):
             self.assertEqual(server.consume_rate_limits(limits, now=112), (True, 0))
 
+    def test_model_limits_always_include_client_and_optional_session(self):
+        without_session = server.model_rate_limits("203.0.113.8")
+        with_session = server.model_rate_limits("203.0.113.8", "a" * 32)
+
+        self.assertIn(("model-client", "203.0.113.8", server.MODEL_REQUESTS_PER_WINDOW), without_session)
+        self.assertFalse(any(item[0] == "model-session" for item in without_session))
+        self.assertIn(("model-client", "203.0.113.8", server.MODEL_REQUESTS_PER_WINDOW), with_session)
+        self.assertIn(("model-session", "a" * 32, server.MODEL_REQUESTS_PER_SESSION_WINDOW), with_session)
+
+    def test_daily_model_limit_has_clear_user_message(self):
+        with patch.object(server, "RATE_LIMIT_WINDOW_SECONDS", 24 * 60 * 60):
+            self.assertEqual(server.rate_limit_message("model"), "今日体验次数已用完，请明天再试")
+            self.assertEqual(server.rate_limit_message("session"), "请求过于频繁，请稍后再试")
+
     def test_active_session_capacity_is_enforced(self):
         with tempfile.TemporaryDirectory() as directory, \
                 patch.object(server, "SESSION_DATA_DIR", pathlib.Path(directory)), \

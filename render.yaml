@@ -2,10 +2,10 @@
 
 services:
   - type: web
-    name: bonjour-menu
+    name: dinetrail-demo
     runtime: docker
     region: frankfurt
-    plan: 0.5c-512mb
+    plan: free
     autoDeployTrigger: commit
     healthCheckPath: /healthz
     envVars:
@@ -30,16 +30,16 @@ services:
       - key: SESSION_TTL_SECONDS
         value: "172800"
       - key: MODEL_REQUESTS_PER_WINDOW
-        value: "60"
+        value: "10"
+      - key: MODEL_REQUESTS_PER_SESSION_WINDOW
+        value: "20"
       - key: MODEL_REQUESTS_GLOBAL_PER_WINDOW
-        value: "300"
+        value: "100"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "86400"
       - key: SESSION_WRITES_PER_WINDOW
         value: "600"
       - key: SESSION_MAX_ACTIVE
         value: "500"
       - key: SESSION_MAX_STORED_IMAGE_BYTES
-        value: "536870912"
-    disk:
-      name: dining-sessions
-      mountPath: /data
-      sizeGB: 1
+        value: "104857600"
