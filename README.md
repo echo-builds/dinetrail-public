@@ -103,3 +103,8 @@ python3 scripts/evaluate_real_menus.py \
 ```
 
 `eval/menu-sources.json` 保存了首批 Wikimedia Commons 样本的文件页和缩略图地址，便于追溯来源；仓库不复制原图。`eval/acceptance-expectations.json` 为已人工看过的样本设置最低菜品数和价格结构，防止“只识别两道也算接口成功”。结构检查通过不等于翻译一定正确，最终仍需人工检查菜名、套餐规则、风险提示和原图位置。
+
+
+## License
+
+本项目基于 [MIT License](LICENSE) 开源，可以使用、修改和分发，但需保留原始版权及许可声明。
