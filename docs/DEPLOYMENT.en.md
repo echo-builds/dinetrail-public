@@ -1,0 +1,52 @@
+# Deployment Guide
+
+This repository includes a `Dockerfile` and `render.yaml`, and can be deployed to Render or any other platform that supports Docker containers.
+
+## Render
+
+Create a service from the repository using Render Blueprint. The default `render.yaml` configuration includes:
+
+- A Docker web service in the Frankfurt region
+- A `/healthz` health check
+- A 1 GB persistent disk mounted at `/data`
+
+Set `DASHSCOPE_API_KEY` in the Render dashboard so the key is never committed to the repository.
+
+Render's free web services do not support persistent disks and go to sleep when idle, so they are suitable only for temporary testing. To preserve dining sessions and uploaded menu images, use an instance with persistent storage. See Render's documentation for [free services](https://render.com/docs/free) and [persistent disks](https://render.com/docs/disks).
+
+## Other Container Platforms
+
+Set at least the following environment variables:
+
+```text
+DASHSCOPE_API_KEY=...
+HOST=0.0.0.0
+PORT=4173
+SESSION_DATA_DIR=/data
+```
+
+Mount persistent storage at `/data`. Otherwise, dining sessions and uploaded menu images will be lost whenever the service restarts.
+
+Use `/healthz` as the health-check endpoint. It returns 200 only when SQLite is writable and a model API key is configured.
+
+The current version has no user accounts; each session URL acts as an anonymous access credential. By default, the service allows 60 model requests per source IP per hour and 300 model requests across the service per hour. It also limits session writes, active sessions, and total server-side image storage. These safeguards help control MVP costs, but they are not a substitute for a production account system, monitoring, or alerting.
+
+## Verify a Deployment
+
+After deployment, run:
+
+```bash
+python3 scripts/smoke_public.py https://YOUR-SERVICE.onrender.com
+```
+
+The script checks HTTPS, model configuration, session creation and recovery, session deletion, and image persistence.
+
+To include one real menu-recognition request:
+
+```bash
+python3 scripts/smoke_public.py \
+  https://YOUR-SERVICE.onrender.com \
+  --menu-image /path/to/menu.jpg
+```
+
+The smoke test deletes only the sessions it creates and does not modify user sessions.
