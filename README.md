@@ -10,7 +10,7 @@ DineTrail 会持续记住不同菜单页已经选了什么，把小红书里的�
 
 ## 产品演示
 
-直接观看约 1 分钟的完整点餐流程：菜单逐道出现、勾选与追问、小红书推荐、追加菜单，以及给服务员看的点菜单。
+1 分钟了解 DineTrail。
 
 https://github.com/user-attachments/assets/54187ea3-4499-4ec5-b2ce-d4222a4fd377
 
