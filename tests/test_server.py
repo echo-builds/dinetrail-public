@@ -257,6 +257,14 @@ class ModelRequestTest(unittest.TestCase):
     def test_model_json_parser_accepts_fenced_json(self):
         self.assertEqual(server.parse_model_json('```json\n{"ok": true}\n```'), {"ok": True})
 
+    def test_normalize_result_unwraps_schema_shaped_object(self):
+        menu = {"id": "menu-1", "title": "现场菜单", "pricing": {}, "dishes": []}
+
+        self.assertEqual(
+            server.normalize_result({"menu": menu}, server.MENU_SCHEMA, "menu_page"),
+            menu,
+        )
+
     def test_guide_schema_requires_verbatim_source_quote(self):
         item_schema = server.GUIDE_SCHEMA["properties"]["items"]["items"]
 

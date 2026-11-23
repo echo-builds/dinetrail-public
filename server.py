@@ -444,7 +444,19 @@ def gemini_request(prompt, schema, image, max_output_tokens):
 
 
 def normalize_result(parsed, schema, name):
-    if schema.get("type") != "object" or not isinstance(parsed, list):
+    if schema.get("type") != "object":
+        return parsed
+    if isinstance(parsed, dict):
+        required = set(schema.get("required", []))
+        if required and not required.issubset(parsed):
+            nested = [
+                value for value in parsed.values()
+                if isinstance(value, dict) and required.issubset(value)
+            ]
+            if len(nested) == 1:
+                return nested[0]
+        return parsed
+    if not isinstance(parsed, list):
         return parsed
     objects = [item for item in parsed if isinstance(item, dict)]
     if len(objects) != len(parsed) or not objects:
@@ -716,6 +728,7 @@ def model_request(prompt, schema, name, image=None, max_output_tokens=8192):
         raise RuntimeError("模型返回的数据结构不符合要求")
     missing = [key for key in schema.get("required", []) if key not in parsed]
     if missing:
+        print(f"Unexpected {name} result shape: {result_shape(parsed)}")
         raise RuntimeError(f"模型结果缺少必要字段：{', '.join(missing)}")
     return parsed
 
