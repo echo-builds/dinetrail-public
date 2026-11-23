@@ -728,8 +728,9 @@ def model_request(prompt, schema, name, image=None, max_output_tokens=8192):
         raise RuntimeError("模型返回的数据结构不符合要求")
     missing = [key for key in schema.get("required", []) if key not in parsed]
     if missing:
-        print(f"Unexpected {name} result shape: {result_shape(parsed)}")
-        raise RuntimeError(f"模型结果缺少必要字段：{', '.join(missing)}")
+        shape = result_shape(parsed)
+        print(f"Unexpected {name} result shape: {shape}")
+        raise RuntimeError(f"模型结果缺少必要字段：{', '.join(missing)}；实际结构为 {shape}")
     return parsed
 
 
