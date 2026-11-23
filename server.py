@@ -374,7 +374,15 @@ def image_inputs(image):
 
 
 def openai_compatible_request(prompt, schema, name, image, max_output_tokens, stream=False):
-    content = [{"type": "text", "text": prompt}]
+    request_prompt = prompt
+    if MODEL_RESPONSE_FORMAT != "json_schema":
+        request_prompt = (
+            f"{prompt}\n"
+            "返回内容必须是一个 JSON 值，不要使用 Markdown 代码块或添加解释。"
+            "JSON 必须严格符合以下 Schema，所有 required 字段都必须返回：\n"
+            f"{json.dumps(schema, ensure_ascii=False, separators=(',', ':'))}"
+        )
+    content = [{"type": "text", "text": request_prompt}]
     for item in image_inputs(image):
         if not item.startswith("data:image/") or ";base64," not in item:
             raise ValueError("图片格式无效")

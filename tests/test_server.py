@@ -232,6 +232,22 @@ class ModelRequestTest(unittest.TestCase):
         self.assertEqual(body["messages"][0]["content"][2]["image_url"]["url"], "data:image/png;base64,Yg==")
         self.assertNotIn("enable_thinking", body)
 
+    def test_json_object_request_includes_schema_in_prompt(self):
+        with patch.object(server, "MODEL_RESPONSE_FORMAT", "json_object"):
+            request = server.openai_compatible_request(
+                "read this menu",
+                server.MENU_SCHEMA,
+                "menu_page",
+                "data:image/png;base64,YQ==",
+                8192,
+            )
+        body = json.loads(request.data)
+        prompt = body["messages"][0]["content"][0]["text"]
+
+        self.assertEqual(body["response_format"], {"type": "json_object"})
+        self.assertIn('"required":["id","title","pricing","dishes"]', prompt)
+        self.assertIn("所有 required 字段都必须返回", prompt)
+
     def test_openai_endpoint_accepts_base_or_full_chat_url(self):
         self.assertEqual(server.openai_chat_endpoint("https://models.example/v1"),
                          "https://models.example/v1/chat/completions")
