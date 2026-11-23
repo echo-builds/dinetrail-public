@@ -1,3 +1,7 @@
+<p align="right">
+  <strong>简体中文</strong> · <a href="README.en.md">English</a>
+</p>
+
 # DineTrail
 
 > 一个会记住整顿饭的旅行点餐助手。
