@@ -6,6 +6,8 @@
 
 > A travel dining companion that remembers your entire meal.
 
+**[Try DineTrail online →](https://dinetrail-demo.onrender.com)**
+
 https://github.com/user-attachments/assets/54187ea3-4499-4ec5-b2ce-d4222a4fd377
 
 ## What DineTrail Does
